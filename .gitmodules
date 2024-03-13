@@ -1,0 +1,9 @@
+[submodule "lib/liblog"]
+	path = lib/liblog
+	url = https://github.com/rxi/log.c.git
+[submodule "lib/bpftool"]
+	path = lib/bpftool
+	url = https://github.com/libbpf/bpftool.git
+[submodule "lib/libbpf"]
+	path = lib/libbpf
+	url = https://github.com/libbpf/libbpf.git
