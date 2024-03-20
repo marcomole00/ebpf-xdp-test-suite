@@ -19,13 +19,13 @@
 #include "log.h"
 
 // Include skeleton file
-#include "xdp_test.skel.h"
+#include "simple.skel.h"
 
 static int ifindex_iface1 = 0;
 static __u32 xdp_flags = 0;
 
 int main(int argc, const char **argv) {
-  struct xdp_test_bpf *skel = NULL;
+  struct simple_bpf *skel = NULL;
   int err;
   const char *iface1 = NULL;
 
@@ -45,7 +45,7 @@ int main(int argc, const char **argv) {
   }
 
   /* Open BPF application */
-  skel = xdp_test_bpf__open();
+  skel = simple_bpf__open();
   if (!skel) {
     log_fatal("Error while opening BPF skeleton");
     exit(1);
@@ -55,7 +55,7 @@ int main(int argc, const char **argv) {
   bpf_program__set_type(skel->progs.xdp_pass_func, BPF_PROG_TYPE_XDP);
 
   /* Load and verify BPF programs */
-  if (xdp_test_bpf__load(skel)) {
+  if (simple_bpf__load(skel)) {
     log_fatal("Error while loading BPF skeleton");
     exit(1);
   }
@@ -74,6 +74,15 @@ int main(int argc, const char **argv) {
 
   log_info("Successfully attached!");
 
-  xdp_test_bpf__destroy(skel);
+  __u32 curr_prog_id;
+  if (!bpf_xdp_query_id(ifindex_iface1, xdp_flags, &curr_prog_id)) {
+    if (curr_prog_id) {
+      bpf_xdp_detach(ifindex_iface1, xdp_flags, NULL);
+      log_info("Detached XDP program from interface %d", ifindex_iface1);
+    }
+  }
+
+  simple_bpf__destroy(skel);
+
   return 0;
 }

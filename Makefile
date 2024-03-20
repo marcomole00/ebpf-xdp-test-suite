@@ -37,7 +37,7 @@ ALL_LDFLAGS := $(LDFLAGS) $(EXTRA_LDFLAGS) -lrt -ldl -lpthread -lm
 CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
 
-APPS := xdp_test
+APPS := simple
 
 .PHONY: all
 all: $(APPS)
@@ -55,7 +55,7 @@ endef
 $(call allow-override,CC,$(CROSS_COMPILE)cc)
 $(call allow-override,LD,$(CROSS_COMPILE)ld)
 
-$(OUTPUT) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT):
+$(OUTPUT) $(OUTPUT)/$(APPS) $(OUTPUT)/libbpf $(BPFTOOL_OUTPUT):
 	mkdir -p $@
 
 # Build libbpf
@@ -77,24 +77,23 @@ $(LIBLOG_OBJ):
 	$(CC) $(CFLAGS) $(INCLUDES) -c $(LIBLOG_SRC) -o $@
 
 # Build BPF code
-$(OUTPUT)/%.bpf.o: src/ebpf/%.bpf.c $(LIBBPF_OBJ) $(wildcard src/ebpf/%.h) $(VMLINUX) | $(OUTPUT)
-	@echo "=== Building BPF code"
+$(OUTPUT)/$(APPS)/%.bpf.o: src/$(APPS)/%.bpf.c $(LIBBPF_OBJ) $(wildcard src/$(APPS)/%.h) $(VMLINUX) | $(OUTPUT)/$(APPS)
+	@echo ">>> Compiling BPF into" $@
 	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.c,$^) -o $@
 	$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 # Generate BPF skeletons
-$(OUTPUT)/%.skel.h: $(OUTPUT)/%.bpf.o | $(OUTPUT) $(BPFTOOL)
-	@echo "=== Building BPF skeletons"
+$(OUTPUT)/$(APPS)/%.skel.h: $(OUTPUT)/$(APPS)/%.bpf.o | $(OUTPUT)/$(APPS) $(BPFTOOL)
+	@echo ">>> Generating BPF skeleton for" $<
 	$(BPFTOOL) gen skeleton $< > $@
 
-# Build user-space code
-$(patsubst %,$(OUTPUT)/%.o,$(APPS)): %.o: %.skel.h
-
-$(OUTPUT)/%.o: src/%.c $(wildcard src/%.h) | $(OUTPUT)
-	$(CC) $(CFLAGS) $(INCLUDES) -c $(filter %.c,$^) -o $@
+$(OUTPUT)/$(APPS)/%.o: $(OUTPUT)/$(APPS)/%.skel.h src/$(APPS)/%.c $(wildcard src/$(APPS)/%.h) | $(OUTPUT)/$(APPS)
+	@echo ">>> CC" $@
+	$(CC) $(CFLAGS) $(INCLUDES) -I$(dir $@) -c $(filter %.c,$^) -o $@
 
 # Build application binary
-$(APPS): %: $(OUTPUT)/%.o $(LIBBPF_OBJ) $(LIBLOG_OBJ) | $(OUTPUT)
+$(APPS): %: $(OUTPUT)/$(APPS)/%.o $(LIBBPF_OBJ) $(LIBLOG_OBJ) | $(OUTPUT)/$(APPS)
+	@echo ">>> Compiling app" $@
 	$(CC) $(CFLAGS) $^ $(ALL_LDFLAGS) -lelf -lz -o $@
 
 # keep intermediate (.skel.h, .bpf.o, etc) targets
