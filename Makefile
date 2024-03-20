@@ -42,9 +42,15 @@ APPS := simple
 .PHONY: all
 all: $(APPS)
 
-.PHONY: clean
-clean:
-	rm -rf $(OUTPUT) $(APPS)
+.PHONY: clean clean-apps
+clean clean-apps:
+	rm -f $(APPS) || true
+	rm -rf $(OUTPUT)/$(APPS) || true
+
+.PHONY: clean-all
+clean-all: clean
+	rm -rf $(OUTPUT) || true
+
 
 define allow-override
   $(if $(or $(findstring environment,$(origin $(1))),\
