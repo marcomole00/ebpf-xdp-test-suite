@@ -31,19 +31,15 @@ static __always_inline int parse_ethhdr(void *data, void *data_end, __u16 *nh_of
 
 static __always_inline int parse_iphdr(void *data, void *data_end, __u16 *nh_off,
                                        struct iphdr **iphdr) {
-  struct iphdr *ip = data + *nh_off;
+  struct iphdr *ip = data;
   int hdr_size;
 
   if ((void *)ip + sizeof(*ip) > data_end)
     return -1;
 
   hdr_size = ip->ihl * 4;
-
-  /* Sanity check packet field is valid */
   if (hdr_size < sizeof(*ip))
     return -1;
-
-  /* Variable-length IPv4 header, need to use byte-based arithmetic */
   if ((void *)ip + hdr_size > data_end)
     return -1;
 
@@ -55,7 +51,7 @@ static __always_inline int parse_iphdr(void *data, void *data_end, __u16 *nh_off
 
 static __always_inline int parse_icmphdr(void *data, void *data_end, __u16 *nh_off,
                                          struct icmphdr **icmphdr) {
-  struct icmphdr *icmp = data + *nh_off;
+  struct icmphdr *icmp = (struct icmphdr *)data;
   int hdr_size = sizeof(*icmp);
 
   if ((void *)icmp + hdr_size > data_end)
@@ -75,19 +71,27 @@ int xdp_pass_func(struct xdp_md *ctx) {
   bpf_printk("Received packet, parsing...");
   __u16 nf_off = 0;
   struct ethhdr *eth;
-  int eth_type = parse_ethhdr(data, data_end, &nf_off, &eth);
+  int eth_type = parse_ethhdr(data + nf_off, data_end, &nf_off, &eth);
+  if (eth_type < 0) {
+    bpf_printk("Packet is not a valid Ethernet packet, dropping");
+    return XDP_DROP;
+  }
   if (eth_type != bpf_ntohs(ETH_P_IP))
     goto pass;
 
   bpf_printk("IP packet, parsing...");
-  struct iphdr *iphdr;
-  int ip_type = parse_iphdr(data, data_end, &nf_off, &iphdr);
+  struct iphdr *ip;
+  int ip_type = parse_iphdr(data + nf_off, data_end, &nf_off, &ip);
+  if (ip_type < 0) {
+    bpf_printk("Packet is not a valid IPv4 packet, dropping");
+    return XDP_DROP;
+  }
   if (ip_type != IPPROTO_ICMP)
     goto pass;
 
   bpf_printk("ICMP packet, parsing...");
   struct icmphdr *icmphdr;
-  int icmp_type = parse_icmphdr(data, data_end, &nf_off, &icmphdr);
+  int icmp_type = parse_icmphdr(data + nf_off, data_end, &nf_off, &icmphdr);
 
   if (icmp_type != ICMP_ECHO)
     goto pass;
