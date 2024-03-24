@@ -20,7 +20,7 @@ LIBLOG_HDR := $(abspath ./lib/liblog/src/)
 # outdated
 INCLUDES := -I$(OUTPUT) -I./lib/libbpf/include/uapi -I$(LIBLOG_HDR)
 
-APPS := simple pass_drop
+APPS := simple pass_drop tx
 
 .PHONY: all
 all: $(APPS)
