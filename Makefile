@@ -23,7 +23,7 @@ INCLUDES := -I$(OUTPUT) -I./lib/libbpf/include/uapi -I$(LIBLOG_HDR)
 APPS := simple pass_drop tx
 
 .PHONY: all
-all: $(APPS)
+all: $(LIBLOG_OBJ) $(LIBBPF_OBJ) $(BPFTOOL) $(APPS)
 
 .PHONY: clean clean-apps
 clean clean-apps:
@@ -61,7 +61,7 @@ $(BPFTOOL): | $(BPFTOOL_OUTPUT)
 	$(MAKE) ARCH= CROSS_COMPILE= OUTPUT=$(BPFTOOL_OUTPUT)/ -C $(BPFTOOL_SRC) bootstrap
 
 # Build liblog
-$(LIBLOG_OBJ):
+$(LIBLOG_OBJ): | $(OUTPUT)
 	@echo "=== Building liblog"
 	$(CC) $(CFLAGS) $(INCLUDES) -c $(LIBLOG_SRC) -o $@
 

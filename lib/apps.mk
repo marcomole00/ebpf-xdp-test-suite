@@ -37,7 +37,7 @@ $(OUT)/ebpf/%.bpf.o: ebpf/%.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(VMLINUX)
 	$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 # Generate BPF skeletons
-$(OUT)/%.skel.h: $(OUT)/ebpf/%.bpf.o
+$(OUT)/%.skel.h: $(OUT)/ebpf/%.bpf.o | $(BPFTOOL)
 	@echo ">>> Generating BPF skeleton for" $<
 	$(BPFTOOL) gen skeleton $< > $@
 
