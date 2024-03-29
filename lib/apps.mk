@@ -45,3 +45,5 @@ $(OUT)/%.skel.h: $(OUT)/ebpf/%.bpf.o | $(BPFTOOL)
 $(OUT)/%.o: $(OUT)/%.skel.h %.c $(wildcard %.h)
 	@echo ">>> CC" $@
 	$(CC) $(CFLAGS) $(INCLUDES) -I$(dir $@) -c $(filter %.c,$^) -o $@
+
+.SECONDARY:
