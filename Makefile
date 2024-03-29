@@ -66,7 +66,7 @@ $(LIBLOG_OBJ): | $(OUTPUT)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $(LIBLOG_SRC) -o $@
 
 define app_template =
-$$(OUTPUT)/$(1)/$(1).o: $$(wildcard src/$(1)/*.c) $$(wildcard src/$(1)/ebpf/*.bpf.c)
+$$(OUTPUT)/$(1)/$(1).o: $$(wildcard src/$(1)/*.c) $$(wildcard src/$(1)/ebpf/*.bpf.c) | $$(LIBBPF_OBJ) $$(LIBLOG_OBJ) $$(BPFTOOL)
 	make -C src/$(1) all
 
 $(1): $$(OUTPUT)/$(1)/$(1).o $$(LIBBPF_OBJ) $$(LIBLOG_OBJ) | $$(OUTPUT)/$(1)
