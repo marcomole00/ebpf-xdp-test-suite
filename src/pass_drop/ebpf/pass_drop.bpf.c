@@ -63,7 +63,7 @@ static __always_inline int parse_icmphdr(void *data, void *data_end, __u16 *nh_o
   return icmp->type;
 }
 
-SEC("xdp_pass")
+SEC("xdp")
 int xdp_pass_func(struct xdp_md *ctx) {
   void *data_end = (void *)(long)ctx->data_end;
   void *data = (void *)(long)ctx->data;
@@ -76,8 +76,20 @@ int xdp_pass_func(struct xdp_md *ctx) {
     bpf_printk("Packet is not a valid Ethernet packet, dropping");
     return XDP_DROP;
   }
-  if (eth_type != bpf_ntohs(ETH_P_IP))
+  if (eth_type != bpf_htons(ETH_P_IP)) {
+
+    // Print the source MAC address
+    bpf_trace_printk("Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                     eth->h_source[0], eth->h_source[1], eth->h_source[2],
+                     eth->h_source[3], eth->h_source[4], eth->h_source[5]);
+
+    // Print the destination MAC address
+    bpf_trace_printk("Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+                     eth->h_dest[0], eth->h_dest[1], eth->h_dest[2],
+                     eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
+ 
     goto pass;
+  }
 
   bpf_printk("IP packet, parsing...");
   struct iphdr *ip;
