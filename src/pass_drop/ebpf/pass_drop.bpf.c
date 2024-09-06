@@ -77,12 +77,14 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
   if (eth_type != bpf_htons(ETH_P_IP)) {
+    //coalesce the two macc addresses into a single a string
+    char mac[18];
+    bpf_printk("%x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2]);
+    bpf_printk("%x:%x:%x", eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
-    // Print the source MAC address
-    bpf_printk("s:%x:%x:%x:%x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5]);
+    bpf_printk("%x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2]);
+    bpf_printk("%x:%x:%x", eth->h_source[3], eth->h_source[4], eth->h_source[5]);
 
-    // Print the destination MAC address
-    bpf_printk("d:%x:%x:%x:%x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
     bpf_printk("h_proto: %d", bpf_ntohs(eth->h_proto));
  
