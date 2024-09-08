@@ -97,14 +97,14 @@ int xdp_pass_func(struct xdp_md *ctx) {
   if (eth_type != bpf_ntohs(ETH_P_IP))
     goto pass;
 
-  bpf_printk("MAC src: %02x:%02x:%02x:%02x:%02x:%02x", eth->h_source[0], eth->h_source[1],
-             eth->h_source[2], eth->h_source[3], eth->h_source[4], eth->h_source[5]);
-  bpf_printk("MAC dst: %02x:%02x:%02x:%02x:%02x:%02x", eth->h_dest[0], eth->h_dest[1],
-             eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
-  bpf_printk("MAC redir: %02x:%02x:%02x:%02x:%02x:%02x", redirect_cfg.redir_mac[0],
-             redirect_cfg.redir_mac[1], redirect_cfg.redir_mac[2], redirect_cfg.redir_mac[3],
-             redirect_cfg.redir_mac[4], redirect_cfg.redir_mac[5]);
+  bpf_printk("MAC src: %x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2]);
+  bpf_printk("MAC src: %x:%x:%x", eth->h_source[3], eth->h_source[4], eth->h_source[5]);
+  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2]);
+  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
+  bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[0], redirect_cfg.redir_mac[1], redirect_cfg.redir_mac[2]);
+  bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[3], redirect_cfg.redir_mac[4], redirect_cfg.redir_mac[5]);
+  
   bpf_printk("IP packet, parsing...");
   struct iphdr *ip;
   int ip_type = parse_iphdr(data + nf_off, data_end, &nf_off, &ip);
