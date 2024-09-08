@@ -24,6 +24,21 @@
 static int ifindex_iface1 = 0;
 static __u32 xdp_flags = 0;
 
+static void cleanup_iface() {
+  __u32 curr_prog_id;
+  if (!bpf_xdp_query_id(ifindex_iface1, xdp_flags, &curr_prog_id)) {
+    if (curr_prog_id) {
+      bpf_xdp_detach(ifindex_iface1, xdp_flags, NULL);
+      log_info("Detached XDP program from interface %d", ifindex_iface1);
+    }
+  }
+}
+
+void sigint_handler(int sig_no) {
+  cleanup_iface();
+  exit(0);
+}
+
 int main(int argc, const char **argv) {
   struct simple_bpf *skel = NULL;
   int err;
@@ -60,6 +75,20 @@ int main(int argc, const char **argv) {
     exit(1);
   }
 
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = &sigint_handler;
+
+  if (sigaction(SIGINT, &action, NULL) == -1) {
+    log_error("sigation failed");
+    goto cleanup;
+  }
+
+  if (sigaction(SIGTERM, &action, NULL) == -1) {
+    log_error("sigation failed");
+    goto cleanup;
+  }
+
   xdp_flags = 0;
   xdp_flags |= XDP_FLAGS_DRV_MODE;
   xdp_flags |= XDP_FLAGS_UPDATE_IF_NOEXIST;
@@ -74,14 +103,11 @@ int main(int argc, const char **argv) {
 
   log_info("Successfully attached!");
 
-  __u32 curr_prog_id;
-  if (!bpf_xdp_query_id(ifindex_iface1, xdp_flags, &curr_prog_id)) {
-    if (curr_prog_id) {
-      bpf_xdp_detach(ifindex_iface1, xdp_flags, NULL);
-      log_info("Detached XDP program from interface %d", ifindex_iface1);
-    }
-  }
+  // Sleep for 20 minutes to allow for testing to be done
+  sleep(1200);
 
+cleanup:
+  cleanup_iface();
   simple_bpf__destroy(skel);
 
   return 0;
