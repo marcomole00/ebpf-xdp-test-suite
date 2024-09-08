@@ -97,8 +97,8 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
 
-  bpf_printk("IF: %u - IP src: %pI4", ifindex, ip->addrs.saddr);
-  bpf_printk("IF: %u - IP dst: %pI4", ifindex, ip->addrs.daddr);
+  bpf_printk("IF: %u - IP src: %d", ifindex, ip->addrs.saddr);
+  bpf_printk("IF: %u - IP dst: %d", ifindex, ip->addrs.daddr);
 
   if (ip_type != IPPROTO_UDP)
     goto pass;
