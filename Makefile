@@ -20,7 +20,7 @@ LIBLOG_HDR := $(abspath ./lib/liblog/src/)
 # outdated
 INCLUDES := -I$(OUTPUT) -I./lib/libbpf/include/uapi -I$(LIBLOG_HDR)
 
-APPS := simple pass_drop tx udp_log redirect_iface
+APPS := simple pass_drop tx udp_log redirect_iface inspect_ip_header
 
 .PHONY: all
 all: $(LIBLOG_OBJ) $(LIBBPF_OBJ) $(BPFTOOL) $(APPS)
