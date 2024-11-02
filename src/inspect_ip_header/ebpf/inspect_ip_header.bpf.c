@@ -69,7 +69,9 @@ int xdp_pass_func(struct xdp_md *ctx) {
     if (parse_iphdr(data + nh_off, data_end, &nh_off, &ip) < 0)
         return XDP_PASS;
 
-    bpf_printk("IP ID: %d\n", bpf_ntohs(ip->id));
+    // print dst ip address
+    bpf_printk("dst-ip: %d", ip->daddr);
+
 
     return XDP_DROP;
   
