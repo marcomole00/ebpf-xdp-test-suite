@@ -75,6 +75,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
     __u16 nh_off = 0;
     int ipproto;
     int udplen;
+    int dst;
     
     if (parse_ethhdr(data, data_end, &nh_off, &eth) < 0)
         return XDP_PASS;
@@ -93,9 +94,13 @@ int xdp_pass_func(struct xdp_md *ctx) {
         return XDP_PASS;
 
     // print udp src and dst port
-    bpf_printk("%d -> %d", bpf_ntohs(udp->source), bpf_ntohs(udp->dest));
+    dst = bpf_ntohs(udp->dest);
 
-    return XDP_DROP;
+    if (dst < 8192*2) {
+        return XDP_DROP;
+    }
+
+    return XDP_PASS;
   
 }
 
