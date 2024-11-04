@@ -49,6 +49,21 @@ static __always_inline int parse_iphdr(void *data, void *data_end, __u16 *nh_off
   return ip->protocol;
 }
 
+static __always_inline int parse_udphdr(void *data, void *data_end, __u16 *nh_off,
+                                        struct udphdr **udphdr) {
+  struct udphdr *udp = (struct udphdr *)data;
+  int hdr_size = sizeof(struct udphdr);
+
+  if ((void *)udp + hdr_size > data_end)
+    return -1;
+  if (bpf_ntohs(udp->len) < hdr_size)
+    return -1;
+
+  *nh_off += hdr_size;
+  *udphdr = udp;
+
+  return hdr_size;
+}
 
 SEC("xdp")
 int xdp_pass_func(struct xdp_md *ctx) {
@@ -56,6 +71,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
     void *data = (void *)(long)ctx->data;
     struct ethhdr *eth;
     struct iphdr *ip;
+    struct udphdr *udp;
     __u16 nh_off = 0;
     int ipproto;
     int udplen;
@@ -69,9 +85,15 @@ int xdp_pass_func(struct xdp_md *ctx) {
     if (parse_iphdr(data + nh_off, data_end, &nh_off, &ip) < 0)
         return XDP_PASS;
 
-    // print dst ip address
-    bpf_printk("dst-ip: %d", ip->daddr);
+    ipproto = ip->protocol;
+    if (ipproto != IPPROTO_UDP)
+        return XDP_PASS;
 
+    if (parse_udphdr(data + nh_off, data_end, &nh_off, &udp) < 0)
+        return XDP_PASS;
+
+    // print udp src and dst port
+    bpf_printk("%d -> %d", bpf_ntohs(udp->source), bpf_ntohs(udp->dest));
 
     return XDP_DROP;
   
