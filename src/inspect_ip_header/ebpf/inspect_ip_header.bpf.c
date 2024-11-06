@@ -96,11 +96,11 @@ int xdp_pass_func(struct xdp_md *ctx) {
     // print udp src and dst port
     dst = bpf_ntohs(udp->dest);
 
-    if (dst < 8192*2) {
-        return XDP_DROP;
+    if (dst % 4 == 0) {
+        return XDP_PASS;
     }
 
-    return XDP_PASS;
+    return XDP_DROP;
   
 }
 
