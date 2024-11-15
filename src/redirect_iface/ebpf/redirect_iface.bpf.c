@@ -123,8 +123,8 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
 
-  bpf_printk("Src: %pI4:%u", ip->addrs.saddr, bpf_ntohs(udp->source));
-  bpf_printk("Dst: %pI4:%u", ip->addrs.daddr, bpf_ntohs(udp->dest));
+  bpf_printk("Src: %pI4:%u", &ip->addrs.saddr, bpf_ntohs(udp->source));
+  bpf_printk("Dst: %pI4:%u", &ip->addrs.daddr, bpf_ntohs(udp->dest));
   bpf_printk("Redir: %pI4:%u", redirect_cfg.redir_ip, bpf_ntohs(udp->source));
 
   if (bpf_ntohs(udp->dest) != 3333) {
