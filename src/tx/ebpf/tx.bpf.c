@@ -69,49 +69,36 @@ int xdp_pass_func(struct xdp_md *ctx) {
   void *data = (void *)(long)ctx->data;
   void *data_end = (void *)(long)ctx->data_end;
 
-  bpf_printk("Received packet, parsing...");
   __u16 nf_off = 0;
   struct ethhdr *eth;
   int eth_type = parse_ethhdr(data + nf_off, data_end, &nf_off, &eth);
   if (eth_type < 0) {
-    bpf_printk("Packet is not a valid Ethernet packet, dropping");
     return XDP_DROP;
   }
   if (eth_type != bpf_ntohs(ETH_P_IP))
     goto pass;
 
-  bpf_printk("MAC src: %x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2]);
-  bpf_printk("MAC src: %x:%x:%x", eth->h_source[3], eth->h_source[4], eth->h_source[5]);
-  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2]);
-  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
-  bpf_printk("IP packet, parsing...");
   struct iphdr *ip;
   int ip_type = parse_iphdr(data + nf_off, data_end, &nf_off, &ip);
   if (ip_type < 0) {
-    bpf_printk("Packet is not a valid IPv4 packet, dropping");
     return XDP_DROP;
   }
   if (ip_type != IPPROTO_UDP)
     goto pass;
 
-  bpf_printk("UDP packet, parsing...");
   struct udphdr *udp;
   int hdr_size = parse_udphdr(data + nf_off, data_end, &nf_off, &udp);
   if (hdr_size < 0) {
-    bpf_printk("Packet is not a valid UDP packet, dropping");
     return XDP_DROP;
   }
 
-  bpf_printk("Src: %pI4:%u", ip->addrs.saddr, bpf_ntohs(udp->source));
-  bpf_printk("Dst: %pI4:%u", ip->addrs.daddr, bpf_ntohs(udp->dest));
+
 
   if (bpf_ntohs(udp->dest) != 3333) {
-    bpf_printk("UDP packet not on 3333, passing...");
     goto pass;
   }
 
-  bpf_printk("UDP packet on 3333, echoing...");
   unsigned char eth_tmp[ETH_ALEN];
   __builtin_memcpy(eth_tmp, eth->h_source, ETH_ALEN);
   __builtin_memcpy(eth->h_source, eth->h_dest, ETH_ALEN);
