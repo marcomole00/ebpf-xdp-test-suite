@@ -76,7 +76,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
   if (eth_type != bpf_ntohs(ETH_P_IP))
-    goto pass;
+    goto drop;
 
 
   struct iphdr *ip;
@@ -85,7 +85,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
   if (ip_type != IPPROTO_UDP)
-    goto pass;
+    goto drop;
 
   struct udphdr *udp;
   int hdr_size = parse_udphdr(data + nf_off, data_end, &nf_off, &udp);
@@ -96,7 +96,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
 
 
   if (bpf_ntohs(udp->dest) != 3333) {
-    goto pass;
+    goto drop;
   }
 
   unsigned char eth_tmp[ETH_ALEN];
@@ -117,8 +117,8 @@ int xdp_pass_func(struct xdp_md *ctx) {
 
   return XDP_TX;
 
-pass:
-  return XDP_PASS;
+drop:
+  return XDP_DROP;
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
