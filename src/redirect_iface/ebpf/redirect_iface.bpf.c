@@ -138,7 +138,6 @@ int xdp_pass_func(struct xdp_md *ctx) {
   udp->check = 0;
 
   int action = bpf_redirect(redirect_cfg.redir_ifindex, 0);
-  if (action != XDP_REDIRECT)
     
   return action;
 
