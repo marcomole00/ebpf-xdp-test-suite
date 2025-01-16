@@ -103,8 +103,8 @@ int main(int argc, const char **argv) {
 
   log_info("Successfully attached!");
 
-  // sleep for 30 seconds
-  sleep(30);
+  // sleep for 1200 seconds -- 20 minutes
+  sleep(1200);
 
 cleanup:
   cleanup_iface();
