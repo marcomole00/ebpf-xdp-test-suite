@@ -4,12 +4,16 @@
 
 #include <bpf/bpf_helpers.h>
 
+#define XSTR(x) STR(x)
+#define STR(x) #x
 // nr_loops is limited to 1 << 23 (~8 million) loops
-#define NR_LOOPS 1<<15
-
+#ifndef KNOB
+#define KNOB 1<<10
+#endif
+// #pragma message "value of knob  " XSTR(KNOB)
 static long important_computation (__u32 index, void *ctx){
-  int random_value = bpf_get_prandom_u32();
-  int *number = (int *) ctx;
+  __u64 random_value = bpf_get_prandom_u32();
+  __u64 *number = (__u64 *) ctx;
   *number+= random_value;
   return 0;
 }
@@ -17,8 +21,9 @@ static long important_computation (__u32 index, void *ctx){
 
 SEC("xdp_pass")
 int xdp_pass_func(struct xdp_md *ctx) {
-  int number = 0;
-  bpf_loop(NR_LOOPS, important_computation, &number, 0);
+  __u64 number = 0;
+  bpf_loop(KNOB, important_computation, &number, 0);
+  if (number % 10000 == 0) bpf_printk("Unlikely print to trick the compiler from removing the useless code");
   return XDP_DROP;
 }
 

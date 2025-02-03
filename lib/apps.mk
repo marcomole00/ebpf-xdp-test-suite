@@ -22,6 +22,8 @@ BPFTOOL ?= $(abspath $(OUTPUT)/bpftool)/bootstrap/bpftool
 # outdated
 INCLUDES := -I$(OUTPUT) -I../../lib/libbpf/include/uapi -I$(LIBLOG_HDR)
 
+KNOB ?= 1
+
 OUT = $(OUTPUT)/$(CURRENT_APP)
 
 .PHONY: all
@@ -33,7 +35,7 @@ $(OUT) $(OUT)/ebpf:
 # Build BPF code
 $(OUT)/ebpf/%.bpf.o: ebpf/%.bpf.c $(LIBBPF_OBJ) $(wildcard %.h) $(VMLINUX)
 	@echo ">>> Compiling BPF into" $@
-	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.c,$^) -o $@
+	$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) -DKNOB=$(KNOB) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.c,$^) -o $@
 	$(LLVM_STRIP) -g $@ # strip useless DWARF info
 
 # Generate BPF skeletons
