@@ -14,6 +14,9 @@ const volatile struct {
   int redir_ifindex;
   unsigned char redir_mac[ETH_ALEN];
   __be32 redir_ip;
+  int redir_ifindex3;
+  unsigned char redir_mac3[ETH_ALEN];
+  __be32 redir_ip3;
 } redirect_cfg;
 
 static __always_inline int parse_ethhdr(void *data, void *data_end, __u16 *nh_off,
@@ -86,7 +89,6 @@ int xdp_pass_func(struct xdp_md *ctx) {
   void *data = (void *)(long)ctx->data;
   void *data_end = (void *)(long)ctx->data_end;
 
-  bpf_printk("Received packet, parsing...");
   __u16 nf_off = 0;
   struct ethhdr *eth;
   int eth_type = parse_ethhdr(data + nf_off, data_end, &nf_off, &eth);
@@ -97,15 +99,15 @@ int xdp_pass_func(struct xdp_md *ctx) {
   if (eth_type != bpf_ntohs(ETH_P_IP))
     goto pass;
 
-  bpf_printk("MAC src: %x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2]);
-  bpf_printk("MAC src: %x:%x:%x", eth->h_source[3], eth->h_source[4], eth->h_source[5]);
-  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2]);
-  bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
+  // bpf_printk("MAC src: %x:%x:%x", eth->h_source[0], eth->h_source[1], eth->h_source[2]);
+  // bpf_printk("MAC src: %x:%x:%x", eth->h_source[3], eth->h_source[4], eth->h_source[5]);
+  // bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2]);
+  // bpf_printk("MAC dst: %x:%x:%x", eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
-  bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[0], redirect_cfg.redir_mac[1], redirect_cfg.redir_mac[2]);
-  bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[3], redirect_cfg.redir_mac[4], redirect_cfg.redir_mac[5]);
+  // bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[0], redirect_cfg.redir_mac[1], redirect_cfg.redir_mac[2]);
+  // bpf_printk("MAC redir: %x:%x:%x", redirect_cfg.redir_mac[3], redirect_cfg.redir_mac[4], redirect_cfg.redir_mac[5]);
   
-  bpf_printk("IP packet, parsing...");
+  // bpf_printk("IP packet, parsing...");
   struct iphdr *ip;
   int ip_type = parse_iphdr(data + nf_off, data_end, &nf_off, &ip);
   if (ip_type < 0) {
@@ -115,7 +117,7 @@ int xdp_pass_func(struct xdp_md *ctx) {
   if (ip_type != IPPROTO_UDP)
     goto pass;
 
-  bpf_printk("UDP packet, parsing...");
+  // bpf_printk("UDP packet, parsing...");
   struct udphdr *udp;
   int hdr_size = parse_udphdr(data + nf_off, data_end, &nf_off, &udp);
   if (hdr_size < 0) {
@@ -123,31 +125,31 @@ int xdp_pass_func(struct xdp_md *ctx) {
     return XDP_DROP;
   }
 
-  bpf_printk("Src: %pI4:%u", &ip->addrs.saddr, bpf_ntohs(udp->source));
-  bpf_printk("Dst: %pI4:%u", &ip->addrs.daddr, bpf_ntohs(udp->dest));
-  bpf_printk("Redir: %pI4:%u", redirect_cfg.redir_ip, bpf_ntohs(udp->source));
+  // bpf_printk("Src: %pI4:%u", &ip->addrs.saddr, bpf_ntohs(udp->source));
+  // bpf_printk("Dst: %pI4:%u", &ip->addrs.daddr, bpf_ntohs(udp->dest));
+  // bpf_printk("Redir: %pI4:%u", redirect_cfg.redir_ip, bpf_ntohs(udp->source));
 
   if (bpf_ntohs(udp->dest) != 3333) {
     bpf_printk("UDP packet not on 3333, passing...");
     goto pass;
   }
 
-  bpf_printk("UDP packet on 3333, echoing on iface %i...", redirect_cfg.redir_ifindex);
+  // bpf_printk("UDP packet on 3333, echoing on iface %i...", redirect_cfg.redir_ifindex);
+  int action;
   __builtin_memcpy(eth->h_dest, eth->h_source, ETH_ALEN);
+
+  if (bpf_get_prandom_u32() % 2 == 0){
   memcpy_v(eth->h_source, redirect_cfg.redir_mac, ETH_ALEN);
-
-  ip->addrs.daddr = ip->addrs.saddr;
-  ip->addrs.saddr = redirect_cfg.redir_ip;
-
-  __be16 udp_tmp;
-  udp_tmp = udp->source;
-  udp->source = udp->dest;
-  udp->dest = udp_tmp;
-  udp->check = 0;
-
-  int action = bpf_redirect(redirect_cfg.redir_ifindex, 0);
+  action = bpf_redirect(redirect_cfg.redir_ifindex, 0);
   if (action != XDP_REDIRECT)
     bpf_printk("Error while redirecting to %i", redirect_cfg.redir_ifindex);
+  } else {
+  memcpy_v(eth->h_source, redirect_cfg.redir_mac3, ETH_ALEN);
+  action = bpf_redirect(redirect_cfg.redir_ifindex3, 0);
+  if (action != XDP_REDIRECT)
+    bpf_printk("Error while redirecting to %i", redirect_cfg.redir_ifindex);
+  }
+
   return action;
 
 pass:

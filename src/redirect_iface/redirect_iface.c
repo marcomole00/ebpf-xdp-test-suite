@@ -26,9 +26,9 @@
 // Include skeleton file
 #include "redirect_iface.skel.h"
 
-static int ifindex_iface1 = 0, ifindex_iface2 = 0;
-static unsigned char iface2_mac[ETH_ALEN];
-static __be32 iface2_ip;
+static int ifindex_iface1 = 0, ifindex_iface2 = 0, ifindex_iface3 = 0;
+static unsigned char iface2_mac[ETH_ALEN], iface3_mac[ETH_ALEN];
+static __be32 iface2_ip, iface3_ip;
 static __u32 xdp_flags = 0;
 
 static void cleanup_iface() {
@@ -49,7 +49,7 @@ void sigint_handler(int sig_no) {
 int main(int argc, const char **argv) {
   struct redirect_iface_bpf *skel = NULL;
   int err;
-  const char *iface1 = NULL, *iface2 = NULL;
+  const char *iface1 = NULL, *iface2 = NULL, *iface3 = NULL;
 
   if (argc < 3) {
     log_error("Two ifaces need to be specified (first to attach to, second to redirect to)");
@@ -67,7 +67,7 @@ int main(int argc, const char **argv) {
   }
 
   iface2 = argv[2];
-  log_info("XDP program will redirect to %s interface", iface2);
+  log_info("XDP program will redirect some flows to %s interface", iface2);
   ifindex_iface2 = if_nametoindex(iface2);
   if (!ifindex_iface2) {
     log_fatal("Error while retrieving the ifindex of %s", iface2);
@@ -76,7 +76,18 @@ int main(int argc, const char **argv) {
     log_info("Got ifindex for iface: %s, which is %d", iface2, ifindex_iface2);
   }
 
-  if (ifindex_iface1 == ifindex_iface2) {
+  iface3 = argv[3];
+  log_info("XDP program will redirect some flows to %s interface", iface3);
+  ifindex_iface3 = if_nametoindex(iface3);
+  if (!ifindex_iface3) {
+    log_fatal("Error while retrieving the ifindex of %s", iface3);
+    exit(1);
+  } else {
+    log_info("Got ifindex for iface: %s, which is %d", iface3, ifindex_iface3);
+  }
+
+
+  if (ifindex_iface1 == ifindex_iface2 || ifindex_iface1 == ifindex_iface3 || ifindex_iface2 == ifindex_iface3) {
     log_fatal("Ingress and egress need to be two different interfaces");
     exit(1);
   }
@@ -107,7 +118,30 @@ int main(int argc, const char **argv) {
   log_info("Got IP for iface %s, which is %s", iface2, inet_ntoa(addr));
   iface2_ip = addr.s_addr;
 
+
+  strncpy(req.ifr_ifrn.ifrn_name, iface3, IF_NAMESIZE);
+  if (ioctl(s, SIOCGIFHWADDR, &req) == -1) {
+    log_fatal("Error in SIOCGIFHWADDR");
+    exit(1);
+  }
+  memcpy(iface3_mac, req.ifr_ifru.ifru_hwaddr.sa_data, ETH_ALEN);
+  log_info("Got MAC for iface %s, which is %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", iface3,
+           iface3_mac[0], iface3_mac[1], iface3_mac[2], iface3_mac[3], iface3_mac[4],
+           iface3_mac[5]);
+
+  if (ioctl(s, SIOCGIFADDR, &req) == -1) {
+    log_fatal("Error in SIOCGIFADDR");
+    exit(1);
+  }
+
+  addr = ((struct sockaddr_in *)&req.ifr_ifru.ifru_addr)->sin_addr;
+  log_info("Got IP for iface %s, which is %s", iface3, inet_ntoa(addr));
+  iface3_ip = addr.s_addr;
+
+
   close(s);
+
+
 
   /* Open BPF application */
   skel = redirect_iface_bpf__open();
@@ -120,6 +154,12 @@ int main(int argc, const char **argv) {
   skel->rodata->redirect_cfg.redir_ifindex = ifindex_iface2;
   skel->rodata->redirect_cfg.redir_ip = iface2_ip;
   memcpy(skel->rodata->redirect_cfg.redir_mac, iface2_mac, ETH_ALEN);
+    /* Pass redirect ifindex */
+  skel->rodata->redirect_cfg.redir_ifindex3 = ifindex_iface3;
+  skel->rodata->redirect_cfg.redir_ip3 = iface3_ip;
+  memcpy(skel->rodata->redirect_cfg.redir_mac3, iface3_mac, ETH_ALEN);
+    
+  
 
   /* Set program type to XDP */
   bpf_program__set_type(skel->progs.xdp_pass_func, BPF_PROG_TYPE_XDP);
